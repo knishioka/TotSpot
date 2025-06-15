@@ -2,78 +2,58 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
+  StyleSheet,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RootStackParamList } from '../navigation/types';
-import { colors, typography, spacing } from '../constants/theme';
-import { useAuth } from '../hooks/useAuth';
-import { useLocation } from '../hooks/useLocation';
-import { venueService } from '../services/venueService';
-import { Venue } from '../types/venue';
 import { VenueCard } from '../components/VenueCard';
+import { useVenues } from '../hooks/useVenues';
+import { useAuth } from '../hooks/useAuth';
+import { RootStackParamList } from '../navigation/types';
+import { colors, typography, spacing, shadows } from '../constants/theme';
+import { Venue } from '../types/venue';
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'VenueDetails'>;
 
-interface QuickActionProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  color: string;
-  onPress: () => void;
-}
-
-const QuickAction: React.FC<QuickActionProps> = ({ icon, label, color, onPress }) => (
-  <TouchableOpacity style={styles.quickAction} onPress={onPress}>
-    <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
-      <Ionicons name={icon} size={24} color="white" />
-    </View>
-    <Text style={styles.quickActionLabel}>{label}</Text>
-  </TouchableOpacity>
-);
+const { width } = Dimensions.get('window');
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAuth();
-  const { location } = useLocation();
-  const [nearbyVenues, setNearbyVenues] = useState<Venue[]>([]);
-  const [popularVenues, setPopularVenues] = useState<Venue[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [popularVenues, setPopularVenues] = useState<Venue[]>([]);
+  const [nearbyVenues, setNearbyVenues] = useState<Venue[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, [location]);
+  const { data: venues = [] } = useVenues(null);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
+      // Mock data for demo - in real app, this would fetch from API
+      const mockPopular = venues.slice(0, 3);
+      const mockNearby = venues.slice(3, 6);
       
-      // Load nearby venues if location is available
-      if (location) {
-        const nearby = await venueService.searchNearby(location, { radius: 5000 });
-        setNearbyVenues(nearby.slice(0, 5));
-      }
-
-      // Load popular venues (those with high ratings)
-      const popular = await venueService.getPopular();
-      setPopularVenues(popular.slice(0, 5));
-
+      setPopularVenues(mockPopular);
+      setNearbyVenues(mockNearby);
     } catch (error) {
-      console.error('Error loading home data:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -81,203 +61,185 @@ export const HomeScreen: React.FC = () => {
     setRefreshing(false);
   };
 
-  const handleQuickAction = (facility: string) => {
-    navigation.navigate('Map', {
-      filters: {
-        facilities: [facility],
-      },
-    });
-  };
-
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      navigation.navigate('Search', { query: searchQuery });
-    }
-  };
-
   const handleVenuePress = (venue: Venue) => {
     navigation.navigate('VenueDetails', { venueId: venue.id });
   };
 
+  const QuickActionCard = ({ icon, label, description, onPress, bgColor }: {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    description: string;
+    onPress: () => void;
+    bgColor: string;
+  }) => (
+    <TouchableOpacity style={styles.quickActionCard} onPress={onPress}>
+      <View style={[styles.quickActionIcon, { backgroundColor: bgColor }]}>
+        <Ionicons name={icon} size={24} color={colors.surface} />
+      </View>
+      <View style={styles.quickActionContent}>
+        <Text style={styles.quickActionLabel}>{label}</Text>
+        <Text style={styles.quickActionDesc}>{description}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Finding family-friendly spots...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
+    <SafeAreaView style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
+          <View style={styles.headerContent}>
             <Text style={styles.greeting}>
-              {user ? `Hello, ${user.user_metadata?.display_name || 'Parent'}!` : 'Welcome!'}
+              {user ? `Hello, ${user.user_metadata?.name || 'Parent'}!` : 'Good day!'}
             </Text>
-            <Text style={styles.subtitle}>Find family-friendly venues near you</Text>
+            <Text style={styles.subtitle}>Let's find the perfect spot for your family</Text>
           </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={() => navigation.navigate('Profile')}
-            >
-              <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.profileButton}
+            onPress={() => navigation.navigate('Profile' as never)}
+          >
+            <View style={styles.profileIcon}>
+              <Ionicons name="person" size={20} color={colors.primary} />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* AI Assistant CTA */}
-        <TouchableOpacity 
-          style={styles.aiCtaContainer}
-          onPress={() => navigation.navigate('AIAssistant')}
-        >
-          <LinearGradient
-            colors={[colors.primary, '#3DBBB3']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.aiCtaGradient}
+        {/* AI Assistant Hero Card */}
+        <View style={styles.heroSection}>
+          <TouchableOpacity 
+            style={styles.aiHeroCard}
+            onPress={() => navigation.navigate('AIAssistant')}
           >
-            <View style={styles.aiCtaContent}>
-              <Ionicons name="sparkles" size={32} color="white" />
-              <View style={styles.aiCtaTextContainer}>
-                <Text style={styles.aiCtaTitle}>Ask AI Assistant</Text>
-                <Text style={styles.aiCtaSubtitle}>Get personalized recommendations for your family</Text>
+            <LinearGradient
+              colors={[colors.primary, colors.primaryLight]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.aiHeroGradient}
+            >
+              <View style={styles.aiHeroContent}>
+                <View style={styles.aiHeroText}>
+                  <Text style={styles.aiHeroTitle}>AI Assistant</Text>
+                  <Text style={styles.aiHeroSubtitle}>
+                    "Find me a quiet café with baby changing facilities near Oxford Street"
+                  </Text>
+                  <View style={styles.aiHeroButton}>
+                    <Text style={styles.aiHeroButtonText}>Try it now</Text>
+                    <Ionicons name="sparkles" size={16} color={colors.primary} />
+                  </View>
+                </View>
+                <View style={styles.aiHeroIcon}>
+                  <Ionicons name="chatbubbles" size={48} color="rgba(255,255,255,0.3)" />
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="white" />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color={colors.text.secondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Or search manually..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-            />
-          </View>
-          <TouchableOpacity style={styles.mapButton} onPress={() => navigation.navigate('Map')}>
-            <Ionicons name="map" size={24} color={colors.primary} />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Find</Text>
+          <Text style={styles.sectionTitle}>What are you looking for?</Text>
+          <View style={styles.quickActionsContainer}>
+            <QuickActionCard
+              icon="medical"
+              label="Baby changing"
+              description="Rooms with changing facilities"
+              bgColor="#E91E63"
+              onPress={() => navigation.navigate('Search', { query: 'baby changing' })}
+            />
+            <QuickActionCard
+              icon="restaurant"
+              label="High chairs"
+              description="Child-friendly dining"
+              bgColor={colors.secondary}
+              onPress={() => navigation.navigate('Search', { query: 'high chairs' })}
+            />
+            <QuickActionCard
+              icon="car"
+              label="Easy parking"
+              description="Convenient access"
+              bgColor={colors.info}
+              onPress={() => navigation.navigate('Search', { query: 'parking' })}
+            />
+            <QuickActionCard
+              icon="accessibility"
+              label="Accessible"
+              description="Wheelchair friendly"
+              bgColor={colors.success}
+              onPress={() => navigation.navigate('Search', { query: 'wheelchair accessible' })}
+            />
+          </View>
+        </View>
+
+        {/* Popular Venues */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Popular this week</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+              <Text style={styles.linkText}>See all</Text>
+            </TouchableOpacity>
+          </View>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.quickActions}
+            contentContainerStyle={styles.horizontalScroll}
           >
-            <QuickAction
-              icon="water"
-              label="Nursing Room"
-              color="#FF6B6B"
-              onPress={() => handleQuickAction('nursing_room')}
-            />
-            <QuickAction
-              icon="body"
-              label="Baby Changing"
-              color="#4ECDC4"
-              onPress={() => handleQuickAction('baby_changing')}
-            />
-            <QuickAction
-              icon="restaurant"
-              label="High Chairs"
-              color="#95E1D3"
-              onPress={() => handleQuickAction('high_chairs')}
-            />
-            <QuickAction
-              icon="car"
-              label="Parking"
-              color="#FFA502"
-              onPress={() => handleQuickAction('parking')}
-            />
-            <QuickAction
-              icon="fitness"
-              label="Play Area"
-              color="#A29BFE"
-              onPress={() => handleQuickAction('play_area')}
-            />
+            {popularVenues.map((venue, index) => (
+              <View key={venue.id} style={[styles.popularVenueCard, { marginLeft: index === 0 ? spacing.component.pageMargin : spacing.sm }]}>
+                <VenueCard
+                  venue={venue}
+                  onPress={() => handleVenuePress(venue)}
+                  style={styles.compactVenueCard}
+                />
+              </View>
+            ))}
           </ScrollView>
         </View>
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+        {/* Nearby Venues */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Near you in Oxford</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Map')}>
+              <Text style={styles.linkText}>View map</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <>
-            {/* Nearby Venues */}
-            {nearbyVenues.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Nearby Venues</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('Map')}>
-                    <Text style={styles.seeAll}>See all</Text>
-                  </TouchableOpacity>
-                </View>
-                {nearbyVenues.map((venue) => (
-                  <VenueCard
-                    key={venue.id}
-                    venue={venue}
-                    onPress={() => handleVenuePress(venue)}
-                    style={styles.venueCard}
-                  />
-                ))}
-              </View>
-            )}
+          <View style={styles.nearbyVenuesContainer}>
+            {nearbyVenues.map((venue) => (
+              <VenueCard
+                key={venue.id}
+                venue={venue}
+                onPress={() => handleVenuePress(venue)}
+                style={styles.fullWidthVenueCard}
+              />
+            ))}
+          </View>
+        </View>
 
-            {/* Popular Venues */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Popular in Oxford</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Search', { sortBy: 'rating' })}>
-                  <Text style={styles.seeAll}>See all</Text>
-                </TouchableOpacity>
-              </View>
-              {popularVenues.map((venue) => (
-                <VenueCard
-                  key={venue.id}
-                  venue={venue}
-                  onPress={() => handleVenuePress(venue)}
-                  style={styles.venueCard}
-                />
-              ))}
-            </View>
-
-            {/* Call to Action for non-logged in users */}
-            {!user && (
-              <View style={styles.ctaContainer}>
-                <Text style={styles.ctaTitle}>Join the TotSpot Community</Text>
-                <Text style={styles.ctaDescription}>
-                  Create an account to save favorites, write reviews, and add new venues
-                </Text>
-                <TouchableOpacity
-                  style={styles.ctaButton}
-                  onPress={() => navigation.navigate('Auth')}
-                >
-                  <Text style={styles.ctaButtonText}>Sign Up Free</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </>
-        )}
+        {/* Bottom spacing for tab bar */}
+        <View style={{ height: spacing.xxxl }} />
       </ScrollView>
-
-      {/* Floating Add Button */}
-      {user && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('AddVenue')}
-        >
-          <Ionicons name="add" size={28} color="white" />
-        </TouchableOpacity>
-      )}
     </SafeAreaView>
   );
 };
@@ -287,204 +249,183 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  greeting: {
-    ...typography.h2,
-    color: colors.text.primary,
-  },
-  headerLeft: {
+  scrollView: {
     flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  aiButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  subtitle: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: spacing.xs,
-  },
-  profileButton: {
-    padding: spacing.xs,
-  },
-  aiCtaContainer: {
-    marginHorizontal: spacing.lg,
-    marginVertical: spacing.md,
-  },
-  aiCtaGradient: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  aiCtaContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  aiCtaTextContainer: {
-    flex: 1,
-    marginHorizontal: spacing.md,
-  },
-  aiCtaTitle: {
-    ...typography.h3,
-    color: 'white',
-    marginBottom: spacing.xs,
-  },
-  aiCtaSubtitle: {
-    ...typography.body,
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    height: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchInput: {
-    flex: 1,
-    ...typography.body,
-    marginLeft: spacing.sm,
-    color: colors.text.primary,
-  },
-  mapButton: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  section: {
-    marginTop: spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  seeAll: {
-    ...typography.body,
-    color: colors.primary,
-  },
-  quickActions: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-  },
-  quickAction: {
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  quickActionIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  quickActionLabel: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    width: 72,
-  },
-  venueCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.xl * 2,
+    padding: spacing.xl,
   },
-  ctaContainer: {
-    backgroundColor: colors.primary + '10',
-    margin: spacing.lg,
+  loadingText: {
+    ...typography.bodyMedium,
+    color: colors.text.secondary,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.component.pageMargin,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  greeting: {
+    ...typography.h2,
+    color: colors.text.primary,
+    fontWeight: '600',
+  },
+  subtitle: {
+    ...typography.bodyMedium,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
+    lineHeight: 22,
+  },
+  profileButton: {
+    marginLeft: spacing.md,
+  },
+  profileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+
+  // Hero Section
+  heroSection: {
+    paddingHorizontal: spacing.component.pageMargin,
+    marginBottom: spacing.component.sectionSpacing,
+  },
+  aiHeroCard: {
+    borderRadius: spacing.md,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  aiHeroGradient: {
     padding: spacing.lg,
-    borderRadius: 16,
+  },
+  aiHeroContent: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  ctaTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
+  aiHeroText: {
+    flex: 1,
   },
-  ctaDescription: {
-    ...typography.body,
-    color: colors.text.secondary,
-    textAlign: 'center',
+  aiHeroTitle: {
+    ...typography.h3,
+    color: colors.text.inverse,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  aiHeroSubtitle: {
+    ...typography.bodySmall,
+    color: colors.text.inverse,
+    opacity: 0.9,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  aiHeroButton: {
+    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: spacing.sm,
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+  },
+  aiHeroButtonText: {
+    ...typography.label,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  aiHeroIcon: {
+    marginLeft: spacing.md,
+  },
+
+  // Sections
+  section: {
+    marginBottom: spacing.component.sectionSpacing,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.component.pageMargin,
     marginBottom: spacing.md,
   },
-  ctaButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.text.primary,
+    fontWeight: '600',
   },
-  ctaButtonText: {
-    ...typography.bodyBold,
-    color: 'white',
+  linkText: {
+    ...typography.bodyMedium,
+    color: colors.primary,
+    fontWeight: '500',
   },
-  fab: {
-    position: 'absolute',
-    right: spacing.lg,
-    bottom: spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+
+  // Quick Actions
+  quickActionsContainer: {
+    paddingHorizontal: spacing.component.pageMargin,
+    gap: spacing.sm,
+  },
+  quickActionCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: spacing.md,
+    ...shadows.sm,
+  },
+  quickActionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  quickActionContent: {
+    flex: 1,
+  },
+  quickActionLabel: {
+    ...typography.h4,
+    color: colors.text.primary,
+    fontWeight: '500',
+    marginBottom: spacing.xs,
+  },
+  quickActionDesc: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+  },
+
+  // Venue Lists
+  horizontalScroll: {
+    paddingRight: spacing.component.pageMargin,
+  },
+  popularVenueCard: {
+    marginRight: spacing.sm,
+  },
+  compactVenueCard: {
+    width: width * 0.7,
+  },
+  nearbyVenuesContainer: {
+    paddingHorizontal: spacing.component.pageMargin,
+    gap: spacing.md,
+  },
+  fullWidthVenueCard: {
+    // No additional styles needed, full width by default
   },
 });
