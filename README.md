@@ -6,11 +6,23 @@
   <img src="https://img.shields.io/badge/Expo-53.0-black.svg" alt="Expo">
   <img src="https://img.shields.io/badge/Supabase-2.50-green.svg" alt="Supabase">
   <img src="https://img.shields.io/badge/Platform-iOS%20%7C%20Android-lightgrey.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Status-Demo-orange.svg" alt="Demo">
 </p>
 
 > **"Finally, an app that understands what parents really need when going out with little ones!"**
 
-TotSpot is a mobile application designed specifically for busy parents in the UK. Find child-friendly venues with comprehensive facility information, real-time crowd levels, and trusted parent reviews. Starting in Oxford and expanding across Europe.
+## ⚠️ Startup Demo Application
+
+**This is a demonstration application developed for seed-stage startup fundraising purposes.** It showcases the core features and vision of TotSpot, a mobile application designed specifically for busy parents in the UK.
+
+### Demo Features:
+- **Functional MVP** with real-time data capabilities
+- **AI Assistant** with mock responses demonstrating future capabilities
+- **Real-time crowd tracking** (simulated for demo purposes)
+- **Complete user journey** from discovery to venue details
+- **Production-ready architecture** scalable for full launch
+
+TotSpot aims to help parents find child-friendly venues with comprehensive facility information, real-time crowd levels, and trusted parent reviews. Starting in Oxford and expanding across Europe.
 
 ## 🌟 Key Features
 
@@ -446,7 +458,18 @@ Please use our [GitHub Issues](https://github.com/totspot/mobile-app/issues) wit
 - **Device/OS information**
 - **Screenshots** if applicable
 
-## 📱 Demo Credentials
+## 📱 Demo Information
+
+### 🎯 Demo Application Notice
+
+This is a **startup demonstration application** built to showcase the potential of TotSpot for investors and stakeholders. While fully functional, some features use simulated data:
+
+- **AI Assistant**: Currently provides curated mock responses to demonstrate future AI capabilities
+- **Real-time Crowd Levels**: Simulated based on time patterns to show the intended functionality
+- **Venue Data**: Limited to Oxford area with sample venues for demonstration
+- **User Reviews**: Mix of real test data and curated examples
+
+### Demo Credentials
 
 For testing purposes, use these demo accounts:
 
@@ -456,6 +479,14 @@ For testing purposes, use these demo accounts:
 | james@demo.com | DemoPass123! | Parent | Tech-savvy dad |
 | emma@demo.com | DemoPass123! | Parent | New parent, few reviews |
 | test@demo.com | DemoPass123! | Admin | Admin access for testing |
+
+### Demo Limitations
+
+- **Geographic Coverage**: Currently limited to Oxford for proof of concept
+- **Payment Integration**: Not implemented in demo version
+- **Push Notifications**: Disabled for demo
+- **Third-party Integrations**: Using mock data instead of live APIs
+- **Scalability**: Demo uses limited dataset; production will handle millions of venues
 
 ## 🗺️ Roadmap
 
